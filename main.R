@@ -1,15 +1,12 @@
 # Load necessary libraries
 library(boot)
 library(deSolve)
-# library(ellipse)
 library(ggplot2)
 
 # Function to set disease parameters with default values
 disease_params <- function(lambda = 0.9, a = 5.5, cMax = 0.85, cRate = 1, cHalf = 1990, delta = 0.1, b = 0.02, mu = 0.01) {
   return(as.list(environment()))
 }
-
-original_paramters <- c(lambda = 0.9, a = 5.5, cMax = 0.85, cRate = 1, cHalf = 1990, delta = 0.1, b = 0.02, mu = 0.01)
 
 # Define the SI ODE model
 SImod <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
@@ -32,18 +29,138 @@ SImod <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
   return(list(deriv))
 })
 
+
+
+# Define the S-I-I-I-I-I-I-I ODE model
+SI7mod <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
+  I <- I1 + I2 + I3 + I4 + I5 + I6 + I7  # Total infected
+  N <- S + I  # Total population
+  lambdaHat <- lambda * exp(-a * I / N)  # Effective transmission rate
+  C_t <- 1 - cMax / (1 + exp(-cRate * (tt - cHalf)))  # Control function C(t)
+  FOI <- lambdaHat * I / N * C_t  # Force of infection
+  g <- 7 * delta  # Transition rate between stages
+  
+  deriv <- rep(NA, 10)
+  deriv[1] <- b * N - FOI * S - mu * S  # Susceptibles
+  deriv[2] <- FOI * S - g * I1 - mu * I1  # Infection class I1
+  deriv[3] <- g * I1 - g * I2 - mu * I2  # Infection class I2
+  deriv[4] <- g * I2 - g * I3 - mu * I3  # Infection class I3
+  deriv[5] <- g * I3 - g * I4 - mu * I4  # Infection class I4
+  deriv[6] <- g * I4 - g * I5 - mu * I5  # Infection class I5
+  deriv[7] <- g * I5 - g * I6 - mu * I6  # Infection class I6
+  deriv[8] <- g * I6 - g * I7 - mu * I7  # Infection class I7
+  deriv[9] <- FOI * S  # Cumulative incidence
+  deriv[10] <- g * I7  # Cumulative mortality
+  
+  return(list(deriv))
+})
+
+# Define the S-I ODE model
+SImod_simple <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
+  I <- I1  # Total infected
+  N <- S + I  # Total population
+  lambdaHat <- lambda * exp(-a * I / N)  # Effective transmission rate
+  C_t <- 1 - cMax / (1 + exp(-cRate * (tt - cHalf)))  # Control function C(t)
+  FOI <- lambdaHat * I / N * C_t  # Force of infection
+  g <- delta  # Transition rate between stages
+  
+  deriv <- rep(NA, 4)
+  deriv[1] <- b * N - FOI * S - mu * S  # Susceptibles
+  deriv[2] <- FOI * S - g * I1 - mu * I1  # Infection class I1
+  deriv[3] <- FOI * S  # Cumulative incidence
+  deriv[4] <- g * I1  # Cumulative mortality
+  
+  return(list(deriv))
+})
+
+
+# Define the SI ODE model without intervention
+SImod_no_intervention <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
+  I <- I1 + I2 + I3 + I4  # Total infected
+  N <- S + I  # Total population
+  lambdaHat <- lambda * exp(-a * I / N)  # Effective transmission rate
+  FOI <- lambdaHat * I / N  # Force of infection without C_t
+  g <- 4 * delta  # Transition rate between stages
+  
+  deriv <- rep(NA, 7)
+  deriv[1] <- b * N - FOI * S - mu * S  # Susceptibles
+  deriv[2] <- FOI * S - g * I1 - mu * I1  # Infection class I1
+  deriv[3] <- g * I1 - g * I2 - mu * I2  # Infection class I2
+  deriv[4] <- g * I2 - g * I3 - mu * I3  # Infection class I3
+  deriv[5] <- g * I3 - g * I4 - mu * I4  # Infection class I4
+  deriv[6] <- FOI * S  # Cumulative incidence
+  deriv[7] <- g * I4  # Cumulative mortality
+  
+  return(list(deriv))
+})
+
+# Define the S-I-I-I-I-I-I-I ODE model without intervention
+SI7mod_no_intervention <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
+  I <- I1 + I2 + I3 + I4 + I5 + I6 + I7  # Total infected
+  N <- S + I  # Total population
+  lambdaHat <- lambda * exp(-a * I / N)  # Effective transmission rate
+  FOI <- lambdaHat * I / N  # Force of infection without C_t
+  g <- 7 * delta  # Transition rate between stages
+  
+  deriv <- rep(NA, 10)
+  deriv[1] <- b * N - FOI * S - mu * S  # Susceptibles
+  deriv[2] <- FOI * S - g * I1 - mu * I1  # Infection class I1
+  deriv[3] <- g * I1 - g * I2 - mu * I2  # Infection class I2
+  deriv[4] <- g * I2 - g * I3 - mu * I3  # Infection class I3
+  deriv[5] <- g * I3 - g * I4 - mu * I4  # Infection class I4
+  deriv[6] <- g * I4 - g * I5 - mu * I5  # Infection class I5
+  deriv[7] <- g * I5 - g * I6 - mu * I6  # Infection class I6
+  deriv[8] <- g * I6 - g * I7 - mu * I7  # Infection class I7
+  deriv[9] <- FOI * S  # Cumulative incidence
+  deriv[10] <- g * I7  # Cumulative mortality
+  
+  return(list(deriv))
+})
+
+# Define the S-I ODE model without intervention
+SImod_simple_no_intervention <- function(tt, yy, parms) with(as.list(c(parms, yy)), {
+  I <- I1  # Total infected
+  N <- S + I  # Total population
+  lambdaHat <- lambda * exp(-a * I / N)  # Effective transmission rate
+  FOI <- lambdaHat * I / N  # Force of infection without C_t
+  g <- delta  # Transition rate between stages
+  
+  deriv <- rep(NA, 4)
+  deriv[1] <- b * N - FOI * S - mu * S  # Susceptibles
+  deriv[2] <- FOI * S - g * I1 - mu * I1  # Infection class I1
+  deriv[3] <- FOI * S  # Cumulative incidence
+  deriv[4] <- g * I1  # Cumulative mortality
+  
+  return(list(deriv))
+})
+
+
+
 # Function to run the deterministic model simulation
 simEpidemic <- function(init, tseq, modFunction, parms) {
-  simDat <- as.data.frame(ode(y = init, times = tseq, func = modFunction, parms = parms))
-  simDat$I <- rowSums(simDat[, paste0("I", 1:4)])
-  simDat$N <- rowSums(simDat[, c("S", paste0("I", 1:4))])
+  # simDat <- as.data.frame(ode(y = init, times = tseq, func = modFunction, parms = parms))
+  simDat <- as.data.frame(lsoda(y = init, times = tseq, func = modFunction, parms = parms, rtol = 1e-9, atol = 1e-9))
+  
+  # Check if there is only one infection compartment
+  infection_cols <- grep("^I", names(simDat))
+  
+  if (length(infection_cols) == 1) {
+    simDat$I <- simDat[, infection_cols]
+  } else {
+    simDat$I <- rowSums(simDat[, infection_cols])
+  }
+  
+  simDat$N <- rowSums(simDat[, c("S", names(simDat)[infection_cols])])
   simDat$P <- simDat$I / simDat$N
   return(simDat)
 }
 
+
 # Initial conditions and time sequence
 # initPrev <- exp(-7)  # Infected at start
-init <- c(S = 999, I1 = 5, I2 = 3, I3 = 1, I4 = 1, CI = 0, CD = 0)
+init_SI7 <- c(S = 990, I1 = 5, I2 = 3, I3 = 1, I4 = 1, I5 = 0, I6 = 0, I7 = 0, CI = 0, CD = 0)
+init_SI <- c(S = 999, I1 = 1, CI = 0, CD = 0)
+init <- c(S = 990, I1 = 5, I2 = 3, I3 = 1, I4 = 1, CI = 0, CD = 0)
 tseqMonth <- seq(1980, 2020, by = 1)
 
 # Simulate the epidemic with default parameters
@@ -59,7 +176,6 @@ ggplot(simDat, aes(x = time, y = P)) +
   theme_minimal()
 
 
-
 # Function to sample the epidemic data
 sampleEpidemic <- function(simDat, sampleDates = seq(1980, 2020, by = 3), numSamp = rep(200, length(sampleDates))) {
   prev_at_sample_times <- simDat[simDat$time %in% sampleDates, "P"]
@@ -70,7 +186,7 @@ sampleEpidemic <- function(simDat, sampleDates = seq(1980, 2020, by = 3), numSam
 }
 
 # Sample the epidemic data
-set.seed(1)
+set.seed(42)
 myDat <- sampleEpidemic(simDat)
 
 # Plot sampled prevalence with confidence intervals
@@ -78,25 +194,19 @@ ggplot(myDat, aes(x = time, y = sampPrev)) +
   geom_point(color = "red", size = 2) +
   geom_errorbar(aes(ymin = lci, ymax = uci), width = 0.2, color = "red") +
   labs(title = "Sampled HIV Prevalence with Confidence Intervals",
-       x = "Year",
+       x = "Year", 
        y = "Sampled Prevalence") +
   theme_minimal() +
   geom_line(data = simDat, aes(x = time, y = P), color = "blue", linetype = "dashed")
 
 
 # Negative log-likelihood function
-nllikelihood <- function(parms = disease_params(), obsDat = myDat) {
-  simDat <- simEpidemic(init, tseq = tseqMonth, modFunction = SImod, parms = parms)
+nllikelihood <- function(parms = disease_params(), obsDat = myDat, modFunction, init) {
+  simDat <- simEpidemic(init, tseq = tseqMonth, modFunction = modFunction, parms = parms)
   matchedTimes <- simDat$time %in% obsDat$time
   nlls <- -dbinom(obsDat$numPos, obsDat$numSamp, prob = simDat$P[matchedTimes], log = TRUE)
   return(sum(nlls))
 }
-
-# Calculate log-likelihood for true parameters
-nllikelihood(trueParms)
-
-# Calculate log-likelihood for some random guessed parameters
-nllikelihood(disease_params(lambda = 0.1, a = 0.05))
 
 
 # Function to substitute parameters
@@ -111,52 +221,136 @@ subsParms <- function(fit.params, fixed.params = disease_params()) {
 }
 
 # Make likelihood a function of fixed and fitted parameters
-objFXN <- function(fit.params, fixed.params = disease_params(), obsDat = myDat) {
+objFXN <- function(fit.params, fixed.params = disease_params(), obsDat = myDat, modFunction, init) {
   parms <- subsParms(fit.params, fixed.params)
-  nllikelihood(parms, obsDat = obsDat)
+  nllikelihood(parms, obsDat = obsDat, modFunction = modFunction, init = init)
 }
 
 # Initial parameter guesses
 init.pars <- c(log_lambda = log(0.5), log_a = log(3), log_cMax = log(0.65), log_cRate = log(2), log_cHalf = log(2000), log_delta = log(0.02), log_b = log(0.03), log_mu = log(0.02))
 
-# Optimize using SANN
-optim.vals <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, control = list(trace = 3, maxit = 150), method = "SANN")
-exp(unname(optim.vals$par))
+# Optimizing for the S-I-I-I-I-I-I-I model
+optim.vals_SI7 <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, modFunction = SI7mod, init = init_SI7, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
+MLEfits <- optim.vals_SI7$par
+final_parameters_SI7 <- c(exp(unname(MLEfits)))
+
+# # Optimizing for the S-I model
+optim.vals_SI <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, modFunction = SImod_simple, init = init_SI, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
+MLEfits <- optim.vals_SI$par
+final_parameters_SI <- c(exp(unname(MLEfits)))
+
 
 # Optimize using Nelder-Mead
-optim.vals <- optim(par = optim.vals$par, objFXN, fixed.params = disease_params(), obsDat = myDat, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
-optim.vals
+optim.vals <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, modFunction = SImod, init = init, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
 MLEfits <- optim.vals$par
 final_parameters <- c(exp(unname(MLEfits)))
 
 
-# Plot MLE fit time series
+# Optimizing for the S-I-I-I-I-I-I-I model without intervention
+optim.vals_SI7_no_intervention <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, modFunction = SI7mod_no_intervention, init = init_SI7, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
+MLEfits_SI7_no_intervention <- optim.vals_SI7_no_intervention$par
+final_parameters_SI7_no_intervention <- c(exp(unname(MLEfits_SI7_no_intervention)))
+
+# Optimizing for the S-I model without intervention
+optim.vals_SI_no_intervention <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, modFunction = SImod_simple_no_intervention, init = init_SI, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
+MLEfits_SI_no_intervention <- optim.vals_SI_no_intervention$par
+final_parameters_SI_no_intervention <- c(exp(unname(MLEfits_SI_no_intervention)))
+
+# Optimizing for the S-I-I-I-I model without intervention
+optim.vals_no_intervention <- optim(par = init.pars, objFXN, fixed.params = disease_params(), obsDat = myDat, modFunction = SImod_no_intervention, init = init, control = list(trace = 3, maxit = 800, reltol = 10^-7), method = "Nelder-Mead", hessian = TRUE)
+MLEfits_no_intervention <- optim.vals_no_intervention$par
+final_parameters_no_intervention <- c(exp(unname(MLEfits_no_intervention)))
+
+
+
+# Plot MLE fit time series for SI7 model
+fitDat_SI7 <- simEpidemic(init = init_SI7, tseq = tseqMonth, modFunction = SI7mod, parms = subsParms(optim.vals_SI7$par, trueParms))
+
+# Plot MLE fit time series for SI7 model without intervention
+fitDat_SI7_no_intervention <- simEpidemic(init = init_SI7, tseq = tseqMonth, modFunction = SI7mod_no_intervention, parms = subsParms(optim.vals_SI7_no_intervention$par, trueParms))
+
+ggplot() +
+  geom_line(data = simDat, aes(x = time, y = P), color = "red") +
+  geom_line(data = fitDat_SI7, aes(x = time, y = P), color = "blue") +
+  geom_line(data = fitDat_SI7_no_intervention, aes(x = time, y = P), color = "green") +
+  geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
+  geom_errorbar(data = myDat, aes(x = time, ymin = lci, ymax = uci), width = 0.2, color = "red") +
+  labs(title = "True and Fitted HIV Prevalence (SI7 Model)",
+       x = "Year",
+       y = "Prevalence") +
+  theme_minimal() +
+  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention"))
+
+
+
+# # Plot MLE fit time series for SI model
+fitDat_SI <- simEpidemic(init = init_SI, tseq = tseqMonth, modFunction = SImod_simple, parms = subsParms(optim.vals_SI$par, trueParms))
+
+# Plot MLE fit time series for SI model without intervention
+fitDat_SI_no_intervention <- simEpidemic(init = init_SI, tseq = tseqMonth, modFunction = SImod_simple_no_intervention, parms = subsParms(optim.vals_SI_no_intervention$par, trueParms))
+
+
+ggplot() +
+  geom_line(data = simDat, aes(x = time, y = P), color = "red") +
+  geom_line(data = fitDat_SI, aes(x = time, y = P), color = "blue") +
+  geom_line(data = fitDat_SI_no_intervention, aes(x = time, y = P), color = "green") +
+  geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
+  geom_errorbar(data = myDat, aes(x = time, ymin = lci, ymax = uci), width = 0.2, color = "red") +
+  labs(title = "True and Fitted HIV Prevalence (SI Model)",
+       x = "Year",
+       y = "Prevalence") +
+  theme_minimal() +
+  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention"))
+
+
 fitDat <- simEpidemic(init, tseq = tseqMonth, modFunction = SImod, parms = subsParms(optim.vals$par, trueParms))
+
+# Plot MLE fit time series for S-I-I-I-I model without intervention
+fitDat_no_intervention <- simEpidemic(init = init, tseq = tseqMonth, modFunction = SImod_no_intervention, parms = subsParms(optim.vals_no_intervention$par, trueParms))
 
 ggplot() +
   geom_line(data = simDat, aes(x = time, y = P), color = "red") +
   geom_line(data = fitDat, aes(x = time, y = P), color = "blue") +
+  geom_line(data = fitDat_no_intervention, aes(x = time, y = P), color = "green") +
   geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
   geom_errorbar(data = myDat, aes(x = time, ymin = lci, ymax = uci), width = 0.2, color = "red") +
-  labs(title = "True and Fitted HIV Prevalence",
+  labs(title = "True and Fitted HIV Prevalence (SI4 Model)",
        x = "Year",
        y = "Prevalence") +
-  theme_minimal()
+  theme_minimal() +
+  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention"))
 
 
-# # Calculate Fisher Information Matrix
-# fisherInfMatrix <- solve(optim.vals$hessian)
-# 
-# # Initialize plot of parameters
-# plot(1, 1, type = 'n', log = 'xy', xlim = c(0.05, 1), ylim = c(0.01, 1),
-#      xlab = expression(lambda), ylab = expression(a), main = "-log(likelihood) contours", bty = "n")
-# 
-# # Add true parameter values to the plot
-# points(exp(MLEfits['log_lambda']), exp(MLEfits['log_a']), pch = 16, cex = 2, col = 'red')
-# # Add MLE to the plot
-# points(exp(MLEfits['log_lambda']), exp(MLEfits['log_a']), pch = 16, cex = 2, col = 'black')
-# # Add 95% contour ellipse from Hessian
-# lines(exp(ellipse(fisherInfMatrix, centre = MLEfits, level = .95)))
-# 
-# legend("topleft", c('truth', 'MLE', '95% Confidence Region'), lty = c(NA, NA, 1), pch = c(16, 16, NA),
-#        col = c('red', 'black', 'black'), bty = 'n')
+
+# Calculate log-likelihood for true parameters using the original S-I-I-I-I model
+nll_true <- nllikelihood(trueParms, obsDat = myDat, modFunction = SImod, init = init)
+
+# Calculate log-likelihood for estimated parameters for the SI7 model
+nll_SI7 <- nllikelihood(subsParms(optim.vals_SI7$par, trueParms), obsDat = myDat, modFunction = SI7mod, init = init_SI7)
+
+# Calculate log-likelihood for estimated parameters for the SI model
+nll_SI <- nllikelihood(subsParms(optim.vals_SI$par, trueParms), obsDat = myDat, modFunction = SImod_simple, init = init_SI)
+
+# Calculate log-likelihood for estimated parameters for the SI model
+nll_SImod <- nllikelihood(subsParms(optim.vals$par, trueParms), obsDat = myDat, modFunction = SImod, init = init)
+
+# Calculate log-likelihood for estimated parameters for the SI7 model without intervention
+nll_SI7_no_intervention <- nllikelihood(subsParms(optim.vals_SI7_no_intervention$par, trueParms), obsDat = myDat, modFunction = SI7mod_no_intervention, init = init_SI7)
+
+# Calculate log-likelihood for estimated parameters for the SI model without intervention
+nll_SI_no_intervention <- nllikelihood(subsParms(optim.vals_SI_no_intervention$par, trueParms), obsDat = myDat, modFunction = SImod_simple_no_intervention, init = init_SI)
+
+# Calculate log-likelihood for estimated parameters for the S-I-I-I-I model without intervention
+nll_no_intervention <- nllikelihood(subsParms(optim.vals_no_intervention$par, trueParms), obsDat = myDat, modFunction = SImod_no_intervention, init = init)
+
+# Print log-likelihood values
+cat("Log-likelihood for true parameters (original model):", nll_true, "\n")
+cat("Log-likelihood for estimated parameters (SI7 model with intervention):", nll_SI7, "\n")
+cat("Log-likelihood for estimated parameters (SI7 model without intervention):", nll_SI7_no_intervention, "\n")
+cat("Log-likelihood for estimated parameters (SI model with intervention):", nll_SI, "\n")
+cat("Log-likelihood for estimated parameters (SI model without intervention):", nll_SI_no_intervention, "\n")
+cat("Log-likelihood for estimated parameters (SI4 model with intervention):", nll_SImod, "\n")
+cat("Log-likelihood for estimated parameters (SI4 model without intervention):", nll_no_intervention, "\n")
+
+
+
