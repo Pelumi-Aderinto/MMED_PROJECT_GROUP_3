@@ -117,7 +117,7 @@ sampleEpidemic <- function(simDat, sampleDates = seq(1980, 2020, by = 3), numSam
 }
 
 
-num_simulations <- 3
+num_simulations <- 10
 vector <- c(1, 2)
 # Initial parameter guesses
 init.pars <- c(log_lambda = log(0.5), log_a = log(3), log_cMax = log(0.65))
@@ -183,82 +183,67 @@ for (i in 1:num_simulations) {
 }
 
 
-fitDat_SI7 <- simEpidemic(init = init_SI7, tseq = tseqMonth, modFunction = SI_model, parms = subsParms(final_parameters_SI7, trueParms), num_compartments = 7, intervention = TRUE)
-fitDat_SI7_no_intervention <- simEpidemic(init = init_SI7, tseq = tseqMonth, modFunction = SI_model, parms = subsParms(final_parameters_SI7_no_intervention, trueParms), num_compartments = 7, intervention = FALSE)
+# Calculate log-likelihood for true parameters using the original S-I-I-I-I model
+nll_true <- nllikelihood(trueParms, obsDat = myDat, modFunction = SI_model, init = init, num_compartments = 4, intervention = TRUE)
 
-ggplot() +
+# Calculate log-likelihood for estimated parameters for the SI10 model
+nll_SI7 <- nllikelihood(subsParms(final_parameters_SI7, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI7, num_compartments = 7, intervention = TRUE)
+nll_SI7_no_intervention <- nllikelihood(subsParms(final_parameters_SI7_no_intervention, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI7, num_compartments = 7, intervention = FALSE)
+
+# Calculate log-likelihood for estimated parameters for the SI model
+nll_SI <- nllikelihood(subsParms(final_parameters_SI, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI, num_compartments = 1, intervention = TRUE)
+nll_SI_no_intervention <- nllikelihood(subsParms(final_parameters_SI_no_intervention, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI, num_compartments = 1, intervention = FALSE)
+
+# Calculate log-likelihood for estimated parameters for the S-I-I-I-I model
+nll_SImod <- nllikelihood(subsParms(final_parameters, trueParms), obsDat = myDat, modFunction = SI_model, init = init, num_compartments = 4, intervention = TRUE)
+nll_no_intervention <- nllikelihood(subsParms(final_parameters_no_intervention, trueParms), obsDat = myDat, modFunction = SI_model, init = init, num_compartments = 4, intervention = FALSE)
+
+# Update plots to include log-likelihood annotations
+plot3 <- ggplot() +                
   geom_line(data = simDat, aes(x = time, y = P), color = "red") +
   geom_line(data = fitDat_SI7, aes(x = time, y = P), color = "blue") +
   geom_line(data = fitDat_SI7_no_intervention, aes(x = time, y = P), color = "green") +
   geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
-  geom_errorbar(data = myDat, aes(x = time, ymin = lci, ymax = uci), width = 0.2, color = "red") +
-  labs(title = "True and Fitted HIV Prevalence (SI7 Model)",
+  labs(title = "SI10 Model",
        x = "Year",
        y = "Prevalence") +
   theme_minimal() +
-  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention"))
+  scale_color_manual(values = c("True" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention")) +
+  annotate("text", x = Inf, y = Inf, label = paste("Log-Likh (Inter):", round(nll_SI10, 2)), hjust = 1.1, vjust = 0.9, size = 2.5) +
+  annotate("text", x = Inf, y = Inf, label = paste("Log-Likh (No Inter):", round(nll_SI10_no_intervention, 2)), hjust = 1.1, vjust = 2.4, size = 2.5)
 
-
-
-# # Plot MLE fit time series for SI model
-fitDat_SI <- simEpidemic(init = init_SI, tseq = tseqMonth, modFunction = SI_model, parms = subsParms(final_parameters_SI, trueParms), num_compartments = 1, intervention = TRUE)
-# Plot MLE fit time series for SI model without intervention
-fitDat_SI_no_intervention <- simEpidemic(init = init_SI, tseq = tseqMonth, modFunction = SI_model, parms = subsParms(final_parameters_SI_no_intervention, trueParms), num_compartments = 1, intervention = FALSE)
-
-
-ggplot() +
-  geom_line(data = simDat, aes(x = time, y = P), color = "red") +
-  geom_line(data = fitDat_SI, aes(x = time, y = P), color = "blue") +
-  geom_line(data = fitDat_SI_no_intervention, aes(x = time, y = P), color = "green") +
-  geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
-  geom_errorbar(data = myDat, aes(x = time, ymin = lci, ymax = uci), width = 0.2, color = "red") +
-  labs(title = "True and Fitted HIV Prevalence (SI Model)",
-       x = "Year",
-       y = "Prevalence") +
-  theme_minimal() +
-  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention"))
-
-
-
-fitDat <- simEpidemic(init=init, tseq = tseqMonth, modFunction = SI_model, parms = subsParms(final_parameters, trueParms), num_compartments = 4, intervention = TRUE)
-
-# Plot MLE fit time series for S-I-I-I-I model without intervention
-fitDat_no_intervention <- simEpidemic(init = init, tseq = tseqMonth, modFunction = SI_model, parms = subsParms(final_parameters_no_intervention, trueParms), num_compartments = 4, intervention = FALSE)
-
-ggplot() +
+plot2 <- ggplot() +
   geom_line(data = simDat, aes(x = time, y = P), color = "red") +
   geom_line(data = fitDat, aes(x = time, y = P), color = "blue") +
   geom_line(data = fitDat_no_intervention, aes(x = time, y = P), color = "green") +
   geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
-  geom_errorbar(data = myDat, aes(x = time, ymin = lci, ymax = uci), width = 0.2, color = "red") +
-  labs(title = "True and Fitted HIV Prevalence (SI4 Model)",
+  labs(title = " SI4 Model",
        x = "Year",
        y = "Prevalence") +
   theme_minimal() +
-  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention"))
+  scale_color_manual(values = c("red" = "red", "with_intervention" = "blue", "without_intervention" = "green"), labels = c("True", "With Intervention", "Without Intervention")) +
+  annotate("text", x = Inf, y = Inf, label = paste("Log-Likh(Inter):", round(nll_SImod, 2)), hjust = 1.1, vjust = 0.9, size = 2.5) +
+  annotate("text", x = Inf, y = Inf, label = paste("Log-Likh(No Inter):", round(nll_no_intervention, 2)), hjust = 1.1, vjust = 2.4, size = 2.5)
 
+plot1 <- ggplot() +
+  geom_line(data = simDat, aes(x = time, y = P), color = "red") +
+  geom_line(data = fitDat_SI, aes(x = time, y = P), color = "blue") +
+  geom_line(data = fitDat_SI_no_intervention, aes(x = time, y = P), color = "green") +
+  geom_point(data = myDat, aes(x = time, y = sampPrev), color = "red", size = 2) +
+  labs(title = "SI Model",
+       x = "Year",
+       y = "Prevalence") +
+  theme_minimal() +
+  scale_color_manual(values = c("True" = "red", "With Intervention" = "blue", "Without Intervention" = "green"),
+                     labels = c("True", "With Intervention", "Without Intervention")) +
+  annotate("text", x = Inf, y = Inf, label = paste("Log-Likh (Inter):", round(nll_SI, 2)), hjust = 1.1, vjust = 0.9, size = 2.5) +
+  annotate("text", x = Inf, y = Inf, label = paste("Log-Likh (No Inter):", round(nll_SI_no_intervention, 2)), hjust = 1.1, vjust = 2.4, size = 2.5)
 
+# Combine plots into a single layout
+stack <- (plot1 + plot2 + plot3) + plot_layout(ncol =3, guides = "collect")
 
-# Calculate log-likelihood for true parameters using the original S-I-I-I-I model
-nll_true <- nllikelihood(trueParms, obsDat = myDat, modFunction = SI_model, init = init, num_compartments = 4, intervention = TRUE)
-
-# Calculate log-likelihood for estimated parameters for the SI7 model
-nll_SI7 <- nllikelihood(subsParms(final_parameters_SI7, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI7, num_compartments = 7, intervention = TRUE)
-
-# Calculate log-likelihood for estimated parameters for the SI model
-nll_SI <- nllikelihood(subsParms(final_parameters_SI, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI, num_compartments = 1, intervention = TRUE)
-
-# Calculate log-likelihood for estimated parameters for the S-I-I-I-I model
-nll_SImod <- nllikelihood(subsParms(final_parameters, trueParms), obsDat = myDat, modFunction = SI_model, init = init, num_compartments = 4, intervention = TRUE)
-
-# Calculate log-likelihood for estimated parameters for the SI7 model without intervention
-nll_SI7_no_intervention <- nllikelihood(subsParms(final_parameters_SI7_no_intervention, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI7, num_compartments = 7, intervention = FALSE)
-
-# Calculate log-likelihood for estimated parameters for the SI model without intervention
-nll_SI_no_intervention <- nllikelihood(subsParms(final_parameters_SI_no_intervention, trueParms), obsDat = myDat, modFunction = SI_model, init = init_SI, num_compartments = 1, intervention = FALSE)
-
-# Calculate log-likelihood for estimated parameters for the S-I-I-I-I model without intervention
-nll_no_intervention <- nllikelihood(subsParms(final_parameters_no_intervention, trueParms), obsDat = myDat, modFunction = SI_model, init = init, num_compartments = 4, intervention = FALSE)
+# Display the combined plot
+stack
 
 # Print log-likelihood values
 cat("Log-likelihood for true parameters (original model):", nll_true, "\n")
@@ -298,26 +283,26 @@ hist(avt_results$av_SI7, breaks = 50, col = "lightblue", border = "black",alpha=
 
 ########################  parameters evaluations
 
-index <- c("log_lambda","log_a","log_cMax")
+# index <- c("log_lambda","log_a","log_cMax")
 # true values
 true_params <- c(trueParms$lambda,trueParms$a,trueParms$cMax,trueParms$cRate)
 
 ## residuals ( true-estimate)
 
 # SI model 
-residuals1 <- true_params-results_df_SI[,index]
+residuals1 <- sweep(results_df_SI, 2, true_params, FUN = "-")
 names(residuals1) <- c("lambda","a","cMax") 
 #summary statistics of residuals.
 summary(residuals1)
 
 # SI4 model 
-residuals2 <- true_params-results_df_SImod[,index]
+residuals2 <- sweep(results_df_SImod, 2, true_params, FUN = "-")
 names(residuals2) <- c("lambda","a","cMax") 
 #summary statistics of residuals.
 summary(residuals2)
 
 # SI7 model 
-residuals3 <- true_params-results_df_SI7[,index]
+residuals3 <- sweep(results_df_SI7, 2, true_params, FUN = "-")
 names(residuals3) <- c("lambda","a","cMax") 
 #summary statistics of residuals.
 summary(residuals3)
@@ -356,5 +341,28 @@ plotter(residuals1)
 plotter(residuals2)
 plotter(residuals3)
 
+
+# Parameters
+rate <- 1  # Transition rate
+n_simulations <- 10000  # Number of simulations
+compartments <- c(1, 2, 4, 7, 10)  # Different number of compartments
+
+# Simulate and store results
+simulation_results <- data.frame()
+
+for (num in compartments) {
+  times <- simulate_infected_time(num_compartments = num, rate = rate, n_simulations = n_simulations)
+  temp_df <- data.frame(Time = times, Compartments = as.factor(num))
+  simulation_results <- rbind(simulation_results, temp_df)
+}
+
+# Plot the distributions
+ggplot(simulation_results, aes(x = Time, fill = Compartments)) +
+  geom_density(alpha = 0.6) +
+  labs(title = "Distribution of Time in Infected State for Different Number of Compartments",
+       x = "Time in Infected State",
+       y = "Density",
+       fill = "Compartments") +
+  theme_minimal()
 
 
